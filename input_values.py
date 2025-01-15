@@ -36,3 +36,5 @@ CITIES_BY_COUNTRY = {
 }
 
 COUNTRIES = tuple(CITIES_BY_COUNTRY.keys())
+
+PAYMENT_TYPES = ("Card", "Internet Banking", "UPI", "Wallet")
