@@ -65,7 +65,7 @@ schema = StructType([ StructField("order_id", IntegerType(), nullable=False),
                       StructField("city", StringType(), nullable=False),
                       StructField("ecommerce_website_name", StringType(), nullable=False),
                       StructField("payment_txn_id", IntegerType(), nullable=False),
-                      StructField("payment_txn_success", BooleanType(), nullable=False),
+                      StructField("payment_txn_success", StringType(), nullable=False),
                       StructField("failure_reason", StringType(), nullable=False)])
 
 # Generate synthetic data for 15,000 rows
