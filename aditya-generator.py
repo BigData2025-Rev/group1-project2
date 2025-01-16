@@ -2,11 +2,16 @@ from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType, StructField, FloatType, IntegerType, StringType, TimestampNTZType
 from faker import Faker
 import pyspark.sql
+from pyspark.sql import Row
 import os
 from pyspark import SparkContext, SparkConf
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import monotonically_increasing_id
 from enum import Enum
+from constants import PAYMENT_TYPES, CITIES_BY_COUNTRY, COUNTRIES, PRODUCTS_DATAFRAME
+from datetime import timedelta
+from datetime import datetime
+import random
 
 
 class Column(Enum):
@@ -29,10 +34,29 @@ class Column(Enum):
 
 
 class Generator:
-    faker = Faker()
-    spark = SparkSession.builder.appName("ecom-orders")\
-                .config("spark.hadoop.fs.defaultFS", "hdfs://localhost:9000/user/spark")\
-                .getOrCreate()
+    PRODUCTS = PRODUCTS_DATAFRAME.groupby('product_category').sample(n=40, replace=True)
+    PRODUCTS = PRODUCTS.to_dict(orient='records')
+    ECOMMERCE_WEBSITE = ["Rakuten", "Amazon_Japan", "Yahoo_Shopping_Japan", "Mercari", "ZozoTown",
+                         "Amazon_Germany", "Otto", "Zalando", "MediaMarkt", "Allyouneed",
+                         "Flipkart", "Amazon_India", "Myntra", "Snapdeal", "Ajio",
+                         "Amazon_UK", "ASOS", "eBay_UK", "Argos", "John_Lewis",
+                         "Amazon_France", "Cdiscount", "Fnac", "Vente-privee", "La_Redoute",
+                         "Amazon", "eBay", "Walmart", "Best_Buy", "Target"]
+    def __init__(self):
+        self.faker = Faker()
+        self.spark = SparkSession.builder.appName("ecom-orders")\
+                    .config("spark.hadoop.fs.defaultFS", "hdfs://localhost:9000/user/spark")\
+                    .getOrCreate()
+        self.gen = self.incrementing_generator(0)
+        self.NUM_ROWS = 15000
+        self.rdd = self.spark.sparkContext.parallelize(self.generate_row(15000, self.PRODUCTS, PAYMENT_TYPES, COUNTRIES, self.ECOMMERCE_WEBSITE))
+        output = '/user/spark/output'
+        self.rdd.map(lambda x: ",".join(map(str, x))).saveAsTextFile(output)
+
+    def incrementing_generator(self, start=0):
+        while True:
+            yield start
+            start += 1
 
     def csv_to_df(self):
         directory = "hdfs://localhost:9000/user/spark/newarchive/"
@@ -49,26 +73,44 @@ class Generator:
         df.coalesce(1).write.csv("/user/spark/output/", header=True)
         self.spark.stop()
 
-    def generate_row(self, order_id):
-        customer_id = None
-        product_id = None
-        product_name = None
-        product_category = None
-        payment_type = None
-        qty = None
-        price = None
-        datetime = None
-        country = None
-        city = None
-        ecommerce_website_name = None
-        payment_txn_id = None
-        payment_txn_success = None
-        failure_reason = None
-        return (order_id, customer_id, product_id,
-                product_name, product_category, payment_type, 
-                qty, price, datetime, 
-                country, city, ecommerce_website_name, 
-                payment_txn_id, payment_txn_success, failure_reason)
+    def generate_row(self, num_of_rows, products, payment_types,\
+                           countries, ecommerce_website_names):
+        try:
+            for _ in range(num_of_rows):
+                start_date = datetime(2021, 1, 1)
+                end_date = datetime(2024, 12,13)
+                delta = end_date-start_date
+                random_seconds = random.randint(0, int(delta.total_seconds()))
+                datetime_ = start_date + timedelta(seconds=random_seconds)
+                order_id = next(self.gen)
+                customer_id = self.faker.uuid4()
+                product = random.choices(products,k=1)[0]
+                pay_type = random.choices(list(payment_types),k=1)[0]
+                country_ = random.choices(countries,k=1)[0]
+                city_ = random.choices(CITIES_BY_COUNTRY[country_], k=1)[0]
+                date_time = datetime_
+                ecommerce_website_name_ = random.choices(ecommerce_website_names, k=1)[0]
+                product_id = product['product_id']
+                product_name = product['product_name']
+                product_category = product['product_category']
+                payment_type_ = pay_type
+                qty = random.randint(0, 100)
+                price = product['price']
+                datetime_ = date_time
+                country = country_
+                city = city_
+                ecommerce_website_name = ecommerce_website_name_
+                payment_txn_id = self.faker.uuid4()
+                payment_txn_success = random.choices(["Y", "N"], weights=[0.8, 0.2], k=1)[0]
+                failure_reason = random.choices(["invalid card details", "card expired"], weights=[0.3, 0.7], k=1)[0]
+                yield (order_id, customer_id, product_id,\
+                        product_name, product_category,\
+                        payment_type_,qty, price, datetime_,\
+                        country, city, ecommerce_website_name,\
+                        payment_txn_id, payment_txn_success,\
+                        failure_reason)
+        except Exception as e:
+            print(f"Exception {e}")
 
 
     def create_location_sales_trend(self, country=[], country_weights=[],\
@@ -87,7 +129,7 @@ class Generator:
 
 
 if __name__=='__main__':
-    schema = StructType([ StructField("order_id", IntegerType(), nullable=False),
+    schema = StructType([ StructField("order_id", IntegerType(), nullable=True),
                           StructField("customer_id", IntegerType(), nullable=True),
                           StructField("customer_name", StringType(), nullable=True),
                           StructField("product_id", IntegerType(), nullable=True),
@@ -95,13 +137,14 @@ if __name__=='__main__':
                           StructField("product_category", StringType(), nullable=True),
                           StructField("payment_type", StringType(), nullable=True),
                           StructField("qty", IntegerType(), nullable=True),
-                          StructField("price", FloatType(), nullable=False), 
-                          StructField("datetime", TimestampNTZType(), nullable=False),
-                          StructField("country", StringType(), nullable=False),
-                          StructField("city", StringType(), nullable=False),
-                          StructField("ecommerce_website_name", StringType(), nullable=False),
-                          StructField("payment_txn_id", IntegerType(), nullable=False),
-                          StructField("payment_txn_success", StringType(), nullable=False),
-                          StructField("failure_reason", StringType(), nullable=False)])
+                          StructField("price", FloatType(), nullable=True),
+                          StructField("datetime", TimestampNTZType(), nullable=True),
+                          StructField("country", StringType(), nullable=True),
+                          StructField("city", StringType(), nullable=True),
+                          StructField("ecommerce_website_name", StringType(), nullable=True),
+                          StructField("payment_txn_id", IntegerType(), nullable=True),
+                          StructField("payment_txn_success", StringType(), nullable=True),
+                          StructField("failure_reason", StringType(), nullable=True)])
     generator = Generator()
-    generator.csv_to_df()
+    generator.spark.stop()
+    #generator.csv_to_df()
