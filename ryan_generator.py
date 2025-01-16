@@ -205,6 +205,6 @@ if __name__ == "__main__":
         12: 0.05
     }
 
-    df = change_records_each_month(df, weight_by_month)
+    df = change_record_dates_by_month(df, weight_by_month)
     show_records_each_month(df)
     print(df.count())
