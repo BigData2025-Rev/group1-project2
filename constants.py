@@ -8,7 +8,7 @@ ORDERS_END_DATE = date(2024, 12, 31)
 CITIES_BY_COUNTRY = {
     "US": 
     (
-        "New York", "Los Angeles", "Chicago", "Houston", "Peoenix",
+        "New York", "Los Angeles", "Chicago", "Houston", "Phoenix",
 		"Philadelphia", "San Antonio", "San Diego", "Dallas", "Jacksonville",
 		"Austin", "Fort Worth", "San Jose", "Columbus", "Charlotte",
 		"Indianapolis", "San Francisco", "Seattle", "Denver", "Oklahoma City"
@@ -23,7 +23,7 @@ CITIES_BY_COUNTRY = {
     (
         "Berlin", "Hamburg", "Munich", "Cologne", "Frankfurt am Main",
 		"Stuttgart", "Düsseldorf", "Leipzig", "Dortmund", "Essen",
-		"Bremen", "Dresdent", "Hanover", "Nuremburg", "Duisburg"
+		"Bremen", "Dresden", "Hanover", "Nuremberg", "Duisburg"
     ),
     "FR": 
     (
