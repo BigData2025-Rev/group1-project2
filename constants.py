@@ -1,4 +1,5 @@
 from datetime import date
+import pandas as pd
 
 NUM_OF_RECORDS = 15000
 
@@ -47,3 +48,10 @@ COUNTRIES = tuple(CITIES_BY_COUNTRY.keys())
 PAYMENT_TYPES = ("Card", "Internet Banking", "UPI", "Wallet")
 
 TXN_FAILURE_RATE = 0.05
+
+PRODUCTS_CSV = './products.csv'
+
+PRODUCTS_DATAFRAME = pd.read_csv(PRODUCTS_CSV)
+PRODUCTS_DATAFRAME = PRODUCTS_DATAFRAME[['product_id', 'product_name', 'product_category', 'price']]
+PRODUCTS_DATAFRAME['product_name'] = PRODUCTS_DATAFRAME['product_name'].str.replace(r'[^A-Za-z0-9\s]', '', regex=True)
+
