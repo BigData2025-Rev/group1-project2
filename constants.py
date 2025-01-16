@@ -1,3 +1,10 @@
+from datetime import date
+
+NUM_OF_RECORDS = 15000
+
+ORDERS_START_DATE = date(2021, 1, 1)
+ORDERS_END_DATE = date(2024, 12, 31)
+
 CITIES_BY_COUNTRY = {
     "US": 
     (
@@ -38,3 +45,5 @@ CITIES_BY_COUNTRY = {
 COUNTRIES = tuple(CITIES_BY_COUNTRY.keys())
 
 PAYMENT_TYPES = ("Card", "Internet Banking", "UPI", "Wallet")
+
+TXN_FAILURE_RATE = 0.05
