@@ -34,24 +34,24 @@ class Column(Enum):
 
 
 class Generator:
+    region = {"US": 'en_US', "JP": "ja_JP","DE":"de_DE", "FR": "fr_FR",  "IN": "en_IN", "UK": "en_GB"}
     PRODUCTS = PRODUCTS_DATAFRAME.groupby('product_category').sample(n=40, replace=True)
     PRODUCTS = PRODUCTS.to_dict(orient='records')
-    ECOMMERCE_WEBSITE = ["Rakuten", "Amazon_Japan", "Yahoo_Shopping_Japan", "Mercari", "ZozoTown",
-                         "Amazon_Germany", "Otto", "Zalando", "MediaMarkt", "Allyouneed",
-                         "Flipkart", "Amazon_India", "Myntra", "Snapdeal", "Ajio",
-                         "Amazon_UK", "ASOS", "eBay_UK", "Argos", "John_Lewis",
-                         "Amazon_France", "Cdiscount", "Fnac", "Vente-privee", "La_Redoute",
-                         "Amazon", "eBay", "Walmart", "Best_Buy", "Target"]
+    ECOMMERCE_WEBSITE = ["amazon", "ebay", "aliexpress", "walmart", "rakuten", "zalando", "etsy"] 
     def __init__(self):
-        self.faker = Faker()
         self.spark = SparkSession.builder.appName("ecom-orders")\
                     .config("spark.hadoop.fs.defaultFS", "hdfs://localhost:9000/user/spark")\
                     .getOrCreate()
         self.gen = self.incrementing_generator(0)
         self.NUM_ROWS = 15000
-        self.rdd = self.spark.sparkContext.parallelize(self.generate_row(15000, self.PRODUCTS, PAYMENT_TYPES, COUNTRIES, self.ECOMMERCE_WEBSITE))
+        header = self.spark.sparkContext.parallelize([tuple(column.value for column in Column)])
+        self.rdd = self.spark.sparkContext.parallelize(list(self.generate_row(15000, self.PRODUCTS, PAYMENT_TYPES, COUNTRIES, self.ECOMMERCE_WEBSITE)))
+        self.rdd_combined = header.union(self.rdd)
         output = '/user/spark/output'
-        self.rdd.map(lambda x: ",".join(map(str, x))).saveAsTextFile(output)
+        self.rdd_combined = self.rdd_combined.map(lambda x: ",".join(map(str, x)))
+        self.rdd_coa = self.rdd_combined.coalesce(1)
+        self.rdd_coa.saveAsTextFile(output)
+
 
     def incrementing_generator(self, start=0):
         while True:
@@ -77,19 +77,21 @@ class Generator:
                            countries, ecommerce_website_names):
         try:
             for _ in range(num_of_rows):
+                country_ = random.choice(countries)
+                faker = Faker(self.region[country_])
                 start_date = datetime(2021, 1, 1)
                 end_date = datetime(2024, 12,13)
                 delta = end_date-start_date
                 random_seconds = random.randint(0, int(delta.total_seconds()))
                 datetime_ = start_date + timedelta(seconds=random_seconds)
                 order_id = next(self.gen)
-                customer_id = self.faker.uuid4()
-                product = random.choices(products,k=1)[0]
-                pay_type = random.choices(list(payment_types),k=1)[0]
-                country_ = random.choices(countries,k=1)[0]
-                city_ = random.choices(CITIES_BY_COUNTRY[country_], k=1)[0]
+                customer_id = faker.uuid4()
+                customer_name = faker.name()
+                product = random.choice(products)
+                pay_type = random.choice(list(payment_types))
+                city_ = random.choice(CITIES_BY_COUNTRY[country_])
                 date_time = datetime_
-                ecommerce_website_name_ = random.choices(ecommerce_website_names, k=1)[0]
+                ecommerce_website_name_ = random.choice(ecommerce_website_names)
                 product_id = product['product_id']
                 product_name = product['product_name']
                 product_category = product['product_category']
@@ -100,10 +102,12 @@ class Generator:
                 country = country_
                 city = city_
                 ecommerce_website_name = ecommerce_website_name_
-                payment_txn_id = self.faker.uuid4()
+                payment_txn_id = faker.uuid4()
                 payment_txn_success = random.choices(["Y", "N"], weights=[0.8, 0.2], k=1)[0]
-                failure_reason = random.choices(["invalid card details", "card expired"], weights=[0.3, 0.7], k=1)[0]
-                yield (order_id, customer_id, product_id,\
+                failure_reason = None
+                if payment_txn_success == "N":
+                    failure_reason = random.choice(["invalid card details", "card expired"])
+                yield (order_id, customer_id, customer_name, product_id,\
                         product_name, product_category,\
                         payment_type_,qty, price, datetime_,\
                         country, city, ecommerce_website_name,\

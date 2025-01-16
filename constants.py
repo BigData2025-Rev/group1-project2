@@ -44,6 +44,12 @@ PAYMENT_TYPES = ("Card", "Internet Banking", "UPI", "Wallet")
 
 PRODUCTS_CSV = './products.csv'
 
-PRODUCTS_DATAFRAME = pd.read_csv(PRODUCTS_CSV)
-PRODUCTS_DATAFRAME = PRODUCTS_DATAFRAME[['product_id', 'product_name', 'product_category', 'price']]
-PRODUCTS_DATAFRAME['product_name'] = PRODUCTS_DATAFRAME['product_name'].str.replace(r'[^A-Za-z0-9\s]', '', regex=True)
+#PRODUCTS_DATAFRAME = pd.read_csv(PRODUCTS_CSV)
+#PRODUCTS_DATAFRAME = PRODUCTS_DATAFRAME[['product_id', 'product_name', 'product_category', 'price']]
+#PRODUCTS_DATAFRAME['product_name'] = PRODUCTS_DATAFRAME['product_name'].str.replace(r'[^A-Za-z0-9\s]', '', regex=True)
+data = {"product_id": [1,2,3,4,5,6,7,8,9,10],
+                      "product_name": ["electric heater", "microwave", "pacifier", "ball", "pencil kit", "asics men's shoes", "sweat band", "keyboard", "monitor", "cup"],
+                      "product_category": ["appliances", "appliances", "baby products", "baby products", "stationery", "shoes", "sports", "electronics", "electronics", "kitchen"],
+                      "price": [100.00, 250.00, 5.00, 1.00, 4.00, 90.00, 10.00, 50.00, 400.00, 12.00]
+                    }
+PRODUCTS_DATAFRAME = pd.DataFrame(data)
