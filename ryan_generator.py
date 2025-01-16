@@ -1,5 +1,5 @@
-from pyspark import SparkContext, SparkConf
-from pyspark.sql import SparkSession
+from pyspark.sql import SparkSession, DataFrame, Row
+from pyspark.sql.functions import col, when, month, year
 from pyspark.sql.types import StructType, StructField, IntegerType, StringType, FloatType, TimestampNTZType
 from faker import Faker
 import random
@@ -8,7 +8,11 @@ from datetime import date
 
 fake = Faker()
 
-spark = SparkSession.builder.appName("group1-data-generator").getOrCreate()
+spark = (SparkSession
+         .builder
+         .master("local[*]")
+         .appName("group1-data-generator")
+         .getOrCreate())
 
 """Notes
 About prices
@@ -38,7 +42,19 @@ Fields that Faker can generate values for
     ecommerce_website_name
 
 """
+product_categories = ("Heating Appliances", "Baby Products")
 
+def add_month(d:date) -> date:
+    year, month, day = d.year, d.month, d.day
+    if month == 12:
+        month = 1
+        year += 1
+    else:
+        month += 1
+    return date(year, month, day)
+
+def generate_product_category():
+    return product_categories[random.randint(0, len(product_categories)-1)]
 
 def generate_payment_txn_success():
     if random.uniform(0.00, 100.00) <= constants.TXN_FAILURE_RATE * 100:
@@ -75,6 +91,7 @@ def generate_row(order_id):
         failure_reason = generate_failure_reason(payment_type)
     country = generate_country()
     city = generate_city(country)
+    product_category = generate_product_category()
 
     return (
         order_id,
@@ -82,7 +99,7 @@ def generate_row(order_id):
         fake.name(),
         random.randint(1, 100),
         fake.word(),
-        fake.name(),
+        product_category,
         payment_type,
         random.randint(1, 20),
         round(random.uniform(1.00, 500.00), 2),
@@ -113,14 +130,81 @@ schema = StructType([ StructField("order_id", IntegerType(), nullable=False),
                       StructField("payment_txn_success", StringType(), nullable=False),
                       StructField("failure_reason", StringType(), nullable=True)])
 
-# Generate synthetic data for 15,000 rows
-#data = [generate_data() for _ in range(1, constants.NUM_OF_RECORDS+1)]
-data = [generate_row(_) for _ in range(1, 101)]
+def show_records_each_month(df:DataFrame):
+    """Just a helper function to see records, not meant for final product"""
+    start_date = date(2021, 1, 1)
+    end_date = date(2021, 2, 1)
+    while end_date < date(2025, 1, 1):
+        # noinspection PyTypeChecker
+        dff = df.filter((col("product_category") == "Baby Products") & (col("datetime") > start_date) & (col("datetime") < end_date))
+        if not dff.isEmpty():
+            print(start_date)
+            print(end_date)
+            dff.select("order_id", "product_category", "qty", "datetime").show()
+        start_date = add_month(start_date)
+        end_date = add_month(end_date)
 
-# Create a DataFrame from the generated data
-df = spark.createDataFrame(data, schema)
+def change_record_dates_by_month(df:DataFrame, weight_by_month):
+    # TODO: Account for quantity when moving dates to particular months.
+    out_df = df.alias("out_df")
+    start_date = constants.ORDERS_START_DATE
+    end_date = date(start_date.year, start_date.month+1, start_date.day)
+    while end_date < constants.ORDERS_END_DATE:
+        for mon in weight_by_month:
+            # noinspection PyTypeChecker
+            dff = df.filter((col("product_category") == "Baby Products") & (col("datetime") > end_date) & (year(col("datetime")) == start_date.year))
+            if not dff.isEmpty():
+                # TODO: Use another method other than sample() to get rows to alter
+                dff = dff.sample(withReplacement=False, fraction= 1.00 * weight_by_month[mon])
+                print(f"Sample: {dff.count()}")
+                rows = dff.collect()
+                order_ids = [row["order_id"] for row in rows]
+                dates = [row["datetime"] for row in rows]
+                for i in range(len(dates)):
+                    dates[i] = fake.date_time_between(start_date, end_date)
+                rows.clear()
+                for d in dates:
+                    rows.append(Row(date_df_datetime=d))
+                data = []
+                for i in range(len(order_ids)):
+                    data.append((order_ids[i], dates[i]))
+                if data:
+                    date_df = spark.createDataFrame(data, ['date_df_order_id', 'date_df_datetime'])
+                    print(f"Sample: {dff.count()}")
+                    join_df = dff.join(date_df, (date_df["date_df_order_id"] == dff["order_id"]), "left")
+                    join_df = join_df.select(col('*'))
+                    join_df = join_df.withColumn("datetime", col("date_df_datetime"))
+                    join_df = join_df.drop(*date_df.columns)
+                    out_df.union(join_df)
+            start_date = add_month(start_date)
+            end_date = add_month(end_date)
+    else:
+        return out_df
 
-#df.select("order_id", "customer_id",  "customer_name", "product_id", "product_name", "price", "ecommerce_website_name").show()
-#df.select("order_id", "datetime", "payment_type", "payment_txn_id", "payment_txn_success", "failure_reason").show()
-df.select("order_id", "datetime", "country", "city", "payment_type", "payment_txn_success").show()
+if __name__ == "__main__":
+    # Generate synthetic data for 15,000 rows
+    # data = [generate_data() for _ in range(1, constants.NUM_OF_RECORDS+1)]
+    data = [generate_row(_) for _ in range(1, 1001)]
 
+    # Create a DataFrame from the generated data
+    df = spark.createDataFrame(data, schema)
+
+    # Transform dataframe to infuse a trend.
+    weight_by_month = {
+        1:  0.05,
+        2:  0.04,
+        3:  0.05,
+        4:  0.06,
+        5:  0.07,
+        6:  0.10,
+        7:  0.12,
+        8:  0.15,
+        9:  0.13,
+        10: 0.11,
+        11: 0.07,
+        12: 0.05
+    }
+
+    df = change_records_each_month(df, weight_by_month)
+    show_records_each_month(df)
+    print(df.count())
