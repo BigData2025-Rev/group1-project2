@@ -3,7 +3,7 @@ from datetime import date
 NUM_OF_RECORDS = 15000
 
 ORDERS_START_DATE = date(2021, 1, 1)
-ORDERS_END_DATE = date(2024, 12, 31)
+ORDERS_END_DATE = date(2025, 1, 1)
 
 CITIES_BY_COUNTRY = {
     "US": 
