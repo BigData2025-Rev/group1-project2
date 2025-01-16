@@ -1,5 +1,53 @@
 import pandas as pd
 
+PRODUCTS_DF = pd.read_csv('./tin_products.csv')
+PRODUCTS_CATEGORY = {
+    'accessories': 10,
+    'appliances': 30,
+    'toys & baby products': 30,
+    'car & motorbike': 15,
+    'industrial supplies': 5,
+    'sports & fitness': 10 
+}
+
+PAYMENT_TYPES = {
+    "Debit Card": 10,
+    "Credit Card": 40,
+    "Gift Card": 20,
+    "Bank Transfer": 10,
+    "Digital Wallet": 20
+}
+FAILURE_REASON = {
+    "Debit Card": {
+        "Incorrect card details (number, expiry, CVV)": 10, 
+        "Insufficient funds": 20
+    },
+    "Credit Card": {
+        "Incorrect card details (number, expiry, CVV)": 10, 
+        "credit limit exceeded": 20
+    },
+    "Gift Card": {
+        "Insufficient balance": 10,
+        "Expired card": 20
+    },
+    "Bank Transfer": {
+        "Network or bank server downtime": 20,
+        "Wrong bank details": 10
+    },
+    "Digital Wallet": {
+        "Wallet not funded": 10,
+        "Authentication errors": 20
+    }
+}
+
+COUNTRIES = {
+    "US": 50,
+    "JP": 10,
+    "DE": 5,
+    "FR": 5,
+    "IN": 5,
+    "UK": 25
+}
 
 CITIES_BY_COUNTRY = {
     "US": 
@@ -38,12 +86,11 @@ CITIES_BY_COUNTRY = {
     )
 }
 
-COUNTRIES = tuple(CITIES_BY_COUNTRY.keys())
-
-PAYMENT_TYPES = ("Card", "Internet Banking", "UPI", "Wallet")
-
-PRODUCTS_CSV = './products.csv'
-
-PRODUCTS_DATAFRAME = pd.read_csv(PRODUCTS_CSV)
-PRODUCTS_DATAFRAME = PRODUCTS_DATAFRAME[['product_id', 'product_name', 'product_category', 'price']]
-PRODUCTS_DATAFRAME['product_name'] = PRODUCTS_DATAFRAME['product_name'].str.replace(r'[^A-Za-z0-9\s]', '', regex=True)
+ECOMMERCE_WEBSITE = {
+    "Amazon": 50,
+    "AliExpress": 10,
+    "eBay": 5,
+    "Temu": 5,
+    "Walmart": 5,
+    "Etsy": 25
+}
