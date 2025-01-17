@@ -21,12 +21,12 @@ product_categories = df["product_category"].unique()
 category_weights = constants.CATEGORY_WEIGHTS
 country_weights = constants.COUNTRY_WEIGHTS
 
-def generate_country(category):
-    return random.choices(constants.COUNTRIES, [country_weights[country]['base_weight'] * category_weights[category]['weight_by_country'][country] for country in country_weights], k=1)[0]
-
-def generate_product_category(country):
+def generate_product_category():
     total_weights = [category_weights[category]['base_weight'] for category in category_weights]
     return random.choices([category for category in category_weights], total_weights, k=1)[0]
+
+def generate_country(category):
+    return random.choices(constants.COUNTRIES, [country_weights[country]['base_weight'] * category_weights[category]['weight_by_country'][country] for country in country_weights], k=1)[0]
 
 def generate_order_month(category):
     return random.choices([mon for mon in category_weights[category]['weight_by_month']], [weight for weight in category_weights[category]["weight_by_month"].values()], k=1)[0]
@@ -97,13 +97,9 @@ def generate_row(order_id):
     failure_reason = ""
     if payment_txn_success == "N":
         failure_reason = generate_failure_reason(payment_type)
-    country=''
-    product_category = generate_product_category(country)
+    product_category = generate_product_category()
     country = generate_country(product_category)
     city = generate_city(country)
-    # country = generate_country()
-    # city = generate_city(country)
-    # product_category = generate_product_category(country)
     order_year = generate_order_year(product_category)
     order_month = generate_order_month(product_category)
     order_time = generate_order_time(country)
