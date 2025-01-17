@@ -4,7 +4,8 @@ from pyspark.sql.types import StructType, StructField, IntegerType, StringType, 
 from faker import Faker
 import random
 import constants
-from datetime import date
+import pandas as pd
+from datetime import date, time, datetime
 
 fake = Faker()
 
@@ -14,35 +15,43 @@ spark = (SparkSession
          .appName("group1-data-generator")
          .getOrCreate())
 
-"""Notes
-About prices
-    Product prices for a given product should be in a given, semi-realistic range.
-    The identical products should have identical prices.
-    
-About qty
-    No one should be buying 20 heaters, but some people will probably buy 20 energy drinks. 
-    
-About customers
-    Realistically, there will be repeat customers. That means they will have the same id and name across multiple orders.
-    For simplicity's sake, these sort of customers would also be tied to a city/country.
-    However, these factors may not be necessary to account for unless there is an interesting trend to develop from it.
+df = pd.read_csv("output.csv")
+product_categories = df["product_category"].unique()
 
-About payment_txn_id
-    What is the difference between this and order_id?
+category_weights = constants.CATEGORY_WEIGHTS
+country_weights = constants.COUNTRY_WEIGHTS
 
-About payment_txn_success
-    Most orders should have successful payments. 95%+
+def generate_country(category):
+    return random.choices(constants.COUNTRIES, [country_weights[country]['base_weight'] * category_weights[category]['weight_by_country'][country] for country in country_weights], k=1)[0]
 
-About payment_type and failure_reason
-    Failure reason should either match the payment type, or be vague. Ideally, we match the payment type.
-    ex: Failure reason should not be "Invalid CVV" for customers who paid without a card.
-    
-Fields that Faker can generate values for
-    customer_name
-    ecommerce_website_name
+def generate_product_category(country):
+    total_weights = [category_weights[category]['base_weight'] for category in category_weights]
+    return random.choices([category for category in category_weights], total_weights, k=1)[0]
 
-"""
-product_categories = ("Heating Appliances", "Baby Products")
+def generate_order_month(category):
+    return random.choices([mon for mon in category_weights[category]['weight_by_month']], [weight for weight in category_weights[category]["weight_by_month"].values()], k=1)[0]
+
+def generate_order_year(category):
+    return random.choices([year for year in category_weights[category]['weight_by_year']], [weight for weight in category_weights[category]["weight_by_year"].values()], k=1)[0]
+
+def generate_order_time(country):
+    """
+    morning:    [7am,12pm)
+    afternoon:  [12pm,5pm)
+    evening:     [5pm,10pm)
+    """
+    day_period = random.choices([day_period for day_period in country_weights[country]['weight_by_time']],
+                                [weight for weight in country_weights[country]["weight_by_time"].values()], k=1)[0]
+    start_hour = 0; end_hour = 23
+    match day_period:
+        case 'morning':
+            start_hour = 7; end_hour = 12
+        case 'afternoon':
+            start_hour = 12; end_hour = 17
+        case 'evening':
+            start_hour = 17; end_hour = 22
+    return fake.date_time_between(datetime(2000, 1, 1, start_hour),
+                           datetime(2000, 1, 1, end_hour)).time()
 
 def add_month(d:date) -> date:
     year, month, day = d.year, d.month, d.day
@@ -53,8 +62,11 @@ def add_month(d:date) -> date:
         month += 1
     return date(year, month, day)
 
-def generate_product_category():
-    return product_categories[random.randint(0, len(product_categories)-1)]
+def construct_order_datetime(year, month, time):
+    start_date = date(year, month, 1)
+    end_date = add_month(start_date)
+    d = fake.date_time_between(start_date, end_date)
+    return d.replace(hour=time.hour, minute=time.minute, second=time.second, microsecond=time.microsecond)
 
 def generate_payment_txn_success():
     if random.uniform(0.00, 100.00) <= constants.TXN_FAILURE_RATE * 100:
@@ -72,10 +84,6 @@ def generate_failure_reason(payment_type):
         return "Invalid CVV"
     else:
         return "Balance too low"
-    
-def generate_country():
-    countries = constants.COUNTRIES
-    return countries[random.randint(0, len(countries)-1)]
 
 def generate_city(country):
     cities_by_country = constants.CITIES_BY_COUNTRY
@@ -89,9 +97,17 @@ def generate_row(order_id):
     failure_reason = ""
     if payment_txn_success == "N":
         failure_reason = generate_failure_reason(payment_type)
-    country = generate_country()
+    country=''
+    product_category = generate_product_category(country)
+    country = generate_country(product_category)
     city = generate_city(country)
-    product_category = generate_product_category()
+    # country = generate_country()
+    # city = generate_city(country)
+    # product_category = generate_product_category(country)
+    order_year = generate_order_year(product_category)
+    order_month = generate_order_month(product_category)
+    order_time = generate_order_time(country)
+    order_datetime = construct_order_datetime(order_year, order_month, order_time)
 
     return (
         order_id,
@@ -103,7 +119,7 @@ def generate_row(order_id):
         payment_type,
         random.randint(1, 20),
         round(random.uniform(1.00, 500.00), 2),
-        fake.date_time_between(constants.ORDERS_START_DATE, constants.ORDERS_END_DATE),
+        order_datetime,
         country,
         city,
         fake.domain_name(),
@@ -136,7 +152,7 @@ def show_records_each_month(df:DataFrame):
     end_date = date(2021, 2, 1)
     while end_date < date(2025, 1, 1):
         # noinspection PyTypeChecker
-        dff = df.filter((col("product_category") == "Baby Products") & (col("datetime") > start_date) & (col("datetime") < end_date))
+        dff = df.filter((col("product_category") == "toys & baby products") & (col("datetime") > start_date) & (col("datetime") < end_date))
         if not dff.isEmpty():
             print(start_date)
             print(end_date)
@@ -144,67 +160,41 @@ def show_records_each_month(df:DataFrame):
         start_date = add_month(start_date)
         end_date = add_month(end_date)
 
-def change_record_dates_by_month(df:DataFrame, weight_by_month):
-    # TODO: Account for quantity when moving dates to particular months.
-    out_df = df.alias("out_df")
-    start_date = constants.ORDERS_START_DATE
-    end_date = date(start_date.year, start_date.month+1, start_date.day)
-    while end_date < constants.ORDERS_END_DATE:
-        for mon in weight_by_month:
-            # noinspection PyTypeChecker
-            dff = df.filter((col("product_category") == "Baby Products") & (col("datetime") > end_date) & (year(col("datetime")) == start_date.year))
-            if not dff.isEmpty():
-                # TODO: Use another method other than sample() to get rows to alter
-                dff = dff.sample(withReplacement=False, fraction= 1.00 * weight_by_month[mon])
-                print(f"Sample: {dff.count()}")
-                rows = dff.collect()
-                order_ids = [row["order_id"] for row in rows]
-                dates = [row["datetime"] for row in rows]
-                for i in range(len(dates)):
-                    dates[i] = fake.date_time_between(start_date, end_date)
-                rows.clear()
-                for d in dates:
-                    rows.append(Row(date_df_datetime=d))
-                data = []
-                for i in range(len(order_ids)):
-                    data.append((order_ids[i], dates[i]))
-                if data:
-                    date_df = spark.createDataFrame(data, ['date_df_order_id', 'date_df_datetime'])
-                    print(f"Sample: {dff.count()}")
-                    join_df = dff.join(date_df, (date_df["date_df_order_id"] == dff["order_id"]), "left")
-                    join_df = join_df.select(col('*'))
-                    join_df = join_df.withColumn("datetime", col("date_df_datetime"))
-                    join_df = join_df.drop(*date_df.columns)
-                    out_df.union(join_df)
-            start_date = add_month(start_date)
-            end_date = add_month(end_date)
-    else:
-        return out_df
-
 if __name__ == "__main__":
     # Generate synthetic data for 15,000 rows
     # data = [generate_data() for _ in range(1, constants.NUM_OF_RECORDS+1)]
-    data = [generate_row(_) for _ in range(1, 1001)]
+    data = [generate_row(_) for _ in range(1, 10001)]
 
     # Create a DataFrame from the generated data
     df = spark.createDataFrame(data, schema)
 
     # Transform dataframe to infuse a trend.
-    weight_by_month = {
-        1:  0.05,
-        2:  0.04,
-        3:  0.05,
-        4:  0.06,
-        5:  0.07,
-        6:  0.10,
-        7:  0.12,
-        8:  0.15,
-        9:  0.13,
-        10: 0.11,
-        11: 0.07,
-        12: 0.05
-    }
-
-    df = change_record_dates_by_month(df, weight_by_month)
+    #df = df.select("order_id","product_category","country","datetime").filter(col("product_category") == "toys & baby products")
+    # df = df.select("order_id", "product_category", "country", "datetime")
+    # df.show()
+    # print(df.count())
+    # #df = df.filter(month(col("datetime")) == 8)
+    print(df.filter((year(col("datetime")) == 2021) & (col("product_category") == 'toys & baby products')).count())
+    print(df.filter((year(col("datetime")) == 2022) & (col("product_category") == 'toys & baby products')).count())
+    print(df.filter((year(col("datetime")) == 2023) & (col("product_category") == 'toys & baby products')).count())
+    print(df.filter((year(col("datetime")) == 2024) & (col("product_category") == 'toys & baby products')).count())
+    # #df = df.filter(col("country") == 'US')
+    df2 = df.select("order_id","product_category","country","datetime").filter((col("product_category") == 'toys & baby products'))
+    df2.show()
+    # print("total category")
+    # print(df2.count())
+    # df33 = df.filter((col("country") == 'DE'))
+    # df3 = df.filter((col("country") == 'DE') & (col("product_category") == 'accessories'))
+    # print("in JP (total, then indust)")
+    # print(df33.count())
+    # print(df3.count())
+    # df4 = df.filter((col("country") == 'UK'))
+    # df = df.filter((col("country") == 'UK') & (col("product_category") == 'accessories'))
+    # print("in US (should be ~5x JP)")
+    # print(df4.count())
+    # print(df.count())
+    """
     show_records_each_month(df)
     print(df.count())
+    """
+
