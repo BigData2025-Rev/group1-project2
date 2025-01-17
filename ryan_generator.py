@@ -158,39 +158,14 @@ def show_records_each_month(df:DataFrame):
 
 if __name__ == "__main__":
     # Generate synthetic data for 15,000 rows
-    # data = [generate_data() for _ in range(1, constants.NUM_OF_RECORDS+1)]
-    data = [generate_row(_) for _ in range(1, 10001)]
+    data = [generate_row(_) for _ in range(1, constants.NUM_OF_RECORDS+1)]
 
     # Create a DataFrame from the generated data
     df = spark.createDataFrame(data, schema)
 
-    # Transform dataframe to infuse a trend.
-    #df = df.select("order_id","product_category","country","datetime").filter(col("product_category") == "toys & baby products")
-    # df = df.select("order_id", "product_category", "country", "datetime")
-    # df.show()
-    # print(df.count())
-    # #df = df.filter(month(col("datetime")) == 8)
+    # Test what's in the dataframe.
     print(df.filter((year(col("datetime")) == 2021) & (col("product_category") == 'toys & baby products')).count())
     print(df.filter((year(col("datetime")) == 2022) & (col("product_category") == 'toys & baby products')).count())
     print(df.filter((year(col("datetime")) == 2023) & (col("product_category") == 'toys & baby products')).count())
     print(df.filter((year(col("datetime")) == 2024) & (col("product_category") == 'toys & baby products')).count())
-    # #df = df.filter(col("country") == 'US')
-    df2 = df.select("order_id","product_category","country","datetime").filter((col("product_category") == 'toys & baby products'))
-    df2.show()
-    # print("total category")
-    # print(df2.count())
-    # df33 = df.filter((col("country") == 'DE'))
-    # df3 = df.filter((col("country") == 'DE') & (col("product_category") == 'accessories'))
-    # print("in JP (total, then indust)")
-    # print(df33.count())
-    # print(df3.count())
-    # df4 = df.filter((col("country") == 'UK'))
-    # df = df.filter((col("country") == 'UK') & (col("product_category") == 'accessories'))
-    # print("in US (should be ~5x JP)")
-    # print(df4.count())
-    # print(df.count())
-    """
-    show_records_each_month(df)
-    print(df.count())
-    """
 

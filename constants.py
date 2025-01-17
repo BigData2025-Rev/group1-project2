@@ -43,20 +43,10 @@ CITIES_BY_COUNTRY = {
     )
 }
 
-#TODO: Don't need weight_by_category?
 COUNTRY_WEIGHTS = {
     "US":
         {
         "base_weight": 0.40,
-        "weight_by_category":
-            {
-            "appliances": 0.15,
-            "toys & baby products": 0.15,
-            "accessories": 0.15,
-            "industrial supplies": 0.15,
-            "sports & fitness": 0.10,
-            "car & motorbike": 0.30
-            },
         "weight_by_time":
             {
                 "morning": 0.30,
@@ -67,15 +57,6 @@ COUNTRY_WEIGHTS = {
     "JP":
         {
         "base_weight": 0.15,
-        "weight_by_category":
-            {
-            "appliances": 0.15,
-            "toys & baby products": 0.15,
-            "accessories": 0.15,
-            "industrial supplies": 0.15,
-            "sports & fitness": 0.10,
-            "car & motorbike": 0.10
-            },
         "weight_by_time":
             {
                 "morning": 0.50,
@@ -86,15 +67,6 @@ COUNTRY_WEIGHTS = {
     "DE":
         {
         "base_weight": 0.10,
-        "weight_by_category":
-            {
-            "appliances": 0.15,
-            "toys & baby products": 0.15,
-            "accessories": 0.15,
-            "industrial supplies": 0.15,
-            "sports & fitness": 0.10,
-            "car & motorbike": 0.10
-            },
         "weight_by_time":
             {
                 "morning": 0.15,
@@ -105,15 +77,6 @@ COUNTRY_WEIGHTS = {
     "FR":
         {
         "base_weight": 0.05,
-        "weight_by_category":
-            {
-            "appliances": 0.15,
-            "toys & baby products": 0.15,
-            "accessories": 0.15,
-            "industrial supplies": 0.15,
-            "sports & fitness": 0.10,
-            "car & motorbike": 0.25
-            },
         "weight_by_time":
             {
                 "morning": 0.20,
@@ -124,15 +87,6 @@ COUNTRY_WEIGHTS = {
     "IN":
         {
         "base_weight": 0.20,
-        "weight_by_category":
-            {
-            "appliances": 0.15,
-            "toys & baby products": 0.15,
-            "accessories": 0.15,
-            "industrial supplies": 0.15,
-            "sports & fitness": 0.10,
-            "car & motorbike": 0.05
-            },
         "weight_by_time":
             {
                 "morning": 0.25,
@@ -143,15 +97,6 @@ COUNTRY_WEIGHTS = {
     "UK":
         {
         "base_weight": 0.10,
-        "weight_by_category":
-            {
-            "appliances": 0.15,
-            "toys & baby products": 0.15,
-            "accessories": 0.15,
-            "industrial supplies": 0.15,
-            "sports & fitness": 0.10,
-            "car & motorbike": 0.20
-            },
         "weight_by_time":
             {
                 "morning": 0.30,
