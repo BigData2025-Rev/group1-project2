@@ -58,6 +58,9 @@ df = df.na.drop(subset=['order_id', 'customer_id', 'customer_name'\
                                          ,'payment_txn_success'\
                                          ])
 
+# drop all duplicate orders and payment ids
+df = df.dropDuplicates(['order_id'])
+df = df.dropDuplicates(['payment_txn_id'])
 
 unique = {}
 for column in df.columns:
@@ -74,10 +77,6 @@ for column in df.columns:
 
 with open('count2.json', 'w') as f:
     json.dump(unique, f, indent=4)
-
-
-df = df.dropDuplicates(['order_id'])
-df = df.dropDuplicates(['payment_txn_id'])
 
 
 df.coalesce(1).write.mode("overwrite").csv(output, header=True)
