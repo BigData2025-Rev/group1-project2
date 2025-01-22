@@ -47,8 +47,6 @@ df = df.withColumn('failure_reason', f.col('failure_reason').cast(StringType()))
 #df.select('failure_reason').distinct().show()
 #df.select('payment_txn_success').distinct().show()
 
-df = df.dropDuplicates(['order_id'])
-df = df.dropDuplicates(['payment_txn_id'])
 
 # drop rows without these columns
 df = df.na.drop(subset=['order_id', 'customer_id', 'customer_name'\
