@@ -4,14 +4,13 @@ import string
 from datetime import datetime
 
 # Read the CSV file
-df = pd.read_csv('data/newest.csv')
+df = pd.read_csv('part-00000-fa7b175a-b967-457c-9dce-5444ec64d559-c000.csv')
 df = df.map(str)
 
 def rouge_string(val):
     is_blank = random.choices([True, False], [0.3, 0.7], k=1)[0]
     if is_blank:
         return ''
-    # return ''.join(random.choices(string.ascii_letters+string.digits, k = 6))
     return 'Unknown'
 
 def replace_year_with_random(timestamp):
@@ -19,8 +18,6 @@ def replace_year_with_random(timestamp):
     random_year = random.randint(1960, 1990)
     new_timestamp = dt.replace(year=random_year)
     return new_timestamp.isoformat()
-
-
 
 def check_rouge():
     rows_with_unknown = df.map(lambda x: x == "Unknown" or x == '' or x.startswith("$")).any(axis=1)
