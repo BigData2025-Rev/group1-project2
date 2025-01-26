@@ -24,7 +24,7 @@ Which locations see the highest traffic of sales?
 What times have the highest traffic of sales? Per country?
 
 
-### The Generator
+### Data Generator
 ```
 - The data generator used trend functions which included weights to create a bias in the data.
 - The trend functions were applied across various columns, such as 
